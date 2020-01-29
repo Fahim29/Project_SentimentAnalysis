@@ -13,37 +13,126 @@ import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, confusion_matrix
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-train_df = pd.read_csv('https://raw.githubusercontent.com/Fahim29/Project_SentimentAnalysis/master/Project/train-balanced-sentiment.csv',dtype=object)
+import re
+import nltk
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+nltk.download('popular')
 
-train_df.head()
+train_df_sentiment = pd.read_csv('https://raw.githubusercontent.com/Fahim29/Project_SentimentAnalysis/master/Project/train-balanced-sentiment.csv',dtype=object)
 
-train_df.info()
+train_df_sarcasm = pd.read_csv('https://raw.githubusercontent.com/Fahim29/Project_SentimentAnalysis/master/Project/sarcasm_csv.csv')
 
-train_df['sentiment'].value_counts()
+train_df_sentiment.head()
 
-train_df.dropna(subset=['review'], inplace=True)
+train_df_sentiment.info()
 
-train_texts, valid_texts, y_train, y_valid = train_test_split(train_df['review'], train_df['sentiment'], random_state=17)
+train_df_sentiment.dropna(subset=['review'], inplace=True)
 
-# build bigrams, put a limit on maximal number of features
-# and minimal word frequency
-tf_idf = TfidfVectorizer(ngram_range=(1, 2), max_features=50000, min_df=2)
-# multinomial  classifier
-classifierNB = MultinomialNB()
-# sklearn's pipeline
-tfidf_NB_pipeline = Pipeline([('tf_idf', tf_idf), 
-                                 ('classifierNB', classifierNB)])
+train_df_sentiment['sentiment'].value_counts()
 
-# Commented out IPython magic to ensure Python compatibility.
-# %%time
-# tfidf_NB_pipeline.fit(train_texts, y_train)
+lm = WordNetLemmatizer()
 
-valid_pred = tfidf_NB_pipeline.predict(valid_texts)
+corpus = []
+for i in range(0, len(train_df_sentiment)):
+    review = re.sub('[^a-zA-Z]', ' ', train_df_sentiment['review'][i])
+    review = review.lower()
+    review = review.split()
+    review = [lm.lemmatize(word) for word in review if not word in stopwords.words('english')]
+    review = ' '.join(review)
+    corpus.append(review)
 
-accuracy_score(y_valid, valid_pred)
+# Creating the Bag of Words model
+from sklearn.feature_extraction.text import CountVectorizer
+cv = CountVectorizer(max_features=2500)
+X = cv.fit_transform(corpus).toarray()
+
+y=pd.get_dummies(train_df_sentiment['sentiment'])
+y=y.iloc[:,1].values
+
+# Train Test Split
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 0)
+
+# Training model using Naive bayes classifier
+from sklearn.naive_bayes import MultinomialNB
+sent_detect_model = MultinomialNB().fit(X_train, y_train)
+
+sentiment=sent_detect_model.predict(X_test)
+
+accuracy_score(y_test,sentiment)
+
+train_df_sarcasm.head()
+
+train_df_sarcasm.info()
+
+train_df_sarcasm.dropna(subset=['sentence'], inplace=True)
+
+train_df_sarcasm['is_sarcastic'].value_counts()
+
+corpus = []
+for i in range(0, len(train_df_sarcasm)):
+    review = re.sub('[^a-zA-Z]', ' ', train_df_sarcasm['sentence'][i])
+    review = review.lower()
+    review = review.split()
+    review = [lm.lemmatize(word) for word in review if not word in stopwords.words('english')]
+    review = ' '.join(review)
+    corpus.append(review)
+
+# Creating the Bag of Words model
+from sklearn.feature_extraction.text import CountVectorizer
+sarcasm_cv = CountVectorizer(max_features=2500)
+sacasmX = sarcasm_cv.fit_transform(corpus).toarray()
+
+sarcasmY=pd.get_dummies(train_df_sarcasm['is_sarcastic'])
+sarcasmY=sarcasmY.iloc[:,1].values
+
+# Train Test Split
+from sklearn.model_selection import train_test_split
+X_train_s, X_test_s, y_train_s, y_test_s = train_test_split(sacasmX, sarcasmY, test_size = 0.20, random_state = 0)
+
+# Training model using Naive bayes classifier
+from sklearn.naive_bayes import MultinomialNB
+sarc_detect_model = MultinomialNB()
+sarc_detect_model.fit(X_train_s, y_train_s)
+
+sarcasm=sarc_detect_model.predict(X_test_s)
+
+accuracy_score(y_test_s,sarcasm)
+
+positive_review = 0
+neutral_review = 0
+negative_review = 0
+array = []
+
+for i in range(0, len(X_test)):
+    sentiment = sent_detect_model.predict(X_test)  
+    sarcasm = sarc_detect_model.predict(X_test)
+    if sentiment[0] == 1 and sarcasm[0] == 0 :
+      positive_review += 1
+      array.append(1)
+    elif sentiment[0] == 0 and sarcasm[0] == 0 :
+      negative_review += 1
+      array.append(0)
+    elif sentiment[0] == 1 and sarcasm[0] == 1 :
+      negative_review += 1
+      array.append(0)
+    elif sentiment[0] == 0 and sarcasm[0] == 1 :
+      positive_review += 1
+      array.append(1)
+    else:
+      neutral_review += 1
+      array.append(2)
+
+positive_review
+
+negative_review
+
+neutral_review
+
+accuracy_score(y_test,array)
