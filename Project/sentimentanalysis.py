@@ -26,11 +26,8 @@ nltk.download('popular')
 
 train_df_sentiment = pd.read_csv('https://raw.githubusercontent.com/Fahim29/Project_SentimentAnalysis/master/Project/train-balanced-sentiment.csv',dtype=object)
 
-train_df_sarcasm = pd.read_csv('https://raw.githubusercontent.com/Fahim29/Project_SentimentAnalysis/master/Project/sarcasm_csv.csv')
+train_df_sarcasm = pd.read_csv("G:\\@FinalYearProjects\\Project_SentimentAnalysis\\Project\\train-balanced-sarcasm.csv")
 
-train_df_sentiment.head()
-
-train_df_sentiment.info()
 
 train_df_sentiment.dropna(subset=['review'], inplace=True)
 
@@ -56,11 +53,9 @@ y=pd.get_dummies(train_df_sentiment['sentiment'])
 y=y.iloc[:,1].values
 
 # Train Test Split
-from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 0)
 
 # Training model using Naive bayes classifier
-from sklearn.naive_bayes import MultinomialNB
 sent_detect_model = MultinomialNB().fit(X_train, y_train)
 
 sentiment=sent_detect_model.predict(X_test)
@@ -71,13 +66,13 @@ train_df_sarcasm.head()
 
 train_df_sarcasm.info()
 
-train_df_sarcasm.dropna(subset=['sentence'], inplace=True)
+train_df_sarcasm.dropna(subset=['comment'], inplace=True)
 
-train_df_sarcasm['is_sarcastic'].value_counts()
+train_df_sarcasm['label'].value_counts()
 
 corpus = []
 for i in range(0, len(train_df_sarcasm)):
-    review = re.sub('[^a-zA-Z]', ' ', train_df_sarcasm['sentence'][i])
+    review = re.sub('[^a-zA-Z]', ' ', train_df_sarcasm['comment'][i])
     review = review.lower()
     review = review.split()
     review = [lm.lemmatize(word) for word in review if not word in stopwords.words('english')]
@@ -89,7 +84,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 sarcasm_cv = CountVectorizer(max_features=2500)
 sacasmX = sarcasm_cv.fit_transform(corpus).toarray()
 
-sarcasmY=pd.get_dummies(train_df_sarcasm['is_sarcastic'])
+sarcasmY=pd.get_dummies(train_df_sarcasm['label'])
 sarcasmY=sarcasmY.iloc[:,1].values
 
 # Train Test Split
